@@ -1,5 +1,10 @@
 # dsh-tui-cost-meter
 
+![Node](https://img.shields.io/badge/node-22.19%2B%20%7C%2024%2B-339933?logo=node.js&logoColor=white)
+![License](https://img.shields.io/badge/license-MIT-blue)
+![dsh-tui](https://img.shields.io/badge/dsh--tui-0.16.x-5B4B8A)
+![status](https://img.shields.io/badge/status-0.4.0-brightgreen)
+
 在 dsh-tui 的底栏状态区显示两行：
 
 1. **Codex 剩余额度**：左边进度条，右边百分比；
@@ -21,6 +26,39 @@ DeepSeek 平价 ━━┃────── 距峰时 1d19h
 
 > **改名说明**：0.4.0 起插件名从 `dsh-tui-codex-quota` 改为 `dsh-tui-cost-meter`。
 > 升级时请先卸载旧包，再安装新包；旧设置命名空间不会自动迁移。
+
+## 快速开始
+
+```sh
+npm install
+npm test
+
+npm pack --pack-destination .
+dsh plugin --profile dsh-tui add "$PWD/dsh-tui-cost-meter-0.4.0.tgz"
+```
+
+然后重启 dsh-tui（或在会话里执行 `/restart`）。
+
+> 本仓库不是已发布到 npm 的包；请按上面的 tarball 流程安装，不要直接对克隆目录执行
+> `dsh plugin add .`，否则 pnpm 可能创建软链接并在运行时解析不到 `@deepseek-ai/schemastery`。
+>
+> 如果本机设置了 `NODE_ENV=production`，`npm install` 会跳过 devDependencies，请改用
+> `npm install --include=dev` 后再跑测试。
+
+## 目录
+
+- [快速开始](#快速开始)
+- [功能](#功能)
+- [安装与卸载](#安装与卸载)
+- [目录结构](#目录结构)
+- [数据来源](#数据来源)
+- [权限与隐私](#权限与隐私)
+- [兼容性与验证](#兼容性与验证)
+- [常见问题](#常见问题)
+- [设置存储](#设置存储)
+- [已知限制](#已知限制)
+- [开发](#开发)
+- [License](#license)
 
 ## 功能
 
@@ -72,7 +110,7 @@ DeepSeek 平价 ━━┃────── 距峰时 1d19h
 └── LICENSE
 ```
 
-## 安装
+## 安装与卸载
 
 在本目录构建一个 tarball，然后用 dsh 的插件管理器装进 `dsh-tui` profile：
 
@@ -176,10 +214,75 @@ UTC 窗口 `[1,4)`、`[6,10)`（北京时间 09:00–12:00、14:00–18:00），
 带一条 `━━┃────` 进度条，`┃` 是当前时刻；峰谷时钟每 5 秒走一次，不受 5 分钟余额刷新间隔
 影响。若只想看倒计时、不想被弹窗打扰，关闭 `峰谷切换时弹提示` 即可。
 
+## 权限与隐私
+
+插件只读，不会修改任何凭据或账本文件：
+
+- **读取的本地文件**
+  - `$DSH_HOME/dsh-auth/credentials.json`：Codex OAuth
+  - `$DSH_HOME/.openai-codex-auth.json`：dsh-codex 凭据
+  - `$CODEX_HOME/auth.json`：官方 Codex CLI 的 `tokens`
+  - `$DSH_HOME/storages/cost-meter/ledger.json`：dsh-cost-meter 账本
+  - `$DSH_HOME/.credentials.yaml`：DeepSeek 开放平台 Key 与平台账号 grant
+- **访问的网络端点**
+  - `https://chatgpt.com/backend-api/wham/usage`
+  - `https://api.deepseek.com/user/balance`
+  - `https://platform.deepseek.com/api/v0/usage/by_api_key/cost`
+- **不会做的事**
+  - 不写回 OAuth / API Key / 账本文件
+  - 不在状态行、日志或错误信息里输出 token
+  - 不把 refresh token 发到任何第三方
+  - 不修改 dsh-tui 本体代码
+
+所有设置写入都走 dsh 的 settings 服务，落在当前 profile 的配置层。
+
+## 兼容性与验证
+
+- 纯 ESM，无 native 依赖；Node `^22.19 || >=24`
+- 插件 peer：`@deepseek-ai/schemastery >=3.18.0`
+- 开发验证环境：dsh `0.2.1-rc.2`、dsh-tui `0.16.1`
+- 单元测试：`node --test test/*.test.js`，当前 95 个测试
+- 可选依赖：`dsh-codex`（Codex 额度服务）与 `dsh-cost-meter`（账本）
+- 未安装可选依赖时，插件仍可安装并显示对应占位/回退数据
+
+## 常见问题
+
+**为什么在输入框上方，而不是宿主 footer？**
+
+dsh-tui 没有把宿主 footer 的模型/目录行开放给插件；`ctx.tuiStatus` 是官方支持的底栏状态接缝，
+所以两条状态行渲染在输入框正上方。插件不会修改 dsh-tui 本身。
+
+**为什么“本月”金额和本地账本对不上？**
+
+本月优先读 DeepSeek 平台后台，口径是**账号级、包含所有 API Key**；dsh-cost-meter 账本通常只覆盖
+本机 DSH 的调用。平台不可用时才回退到账本当月合计。
+
+**为什么余额显示 `—`？**
+
+账号钱包和开放平台 Key 都没有可用凭据。费用与峰谷不受影响；配置
+`DEEPSEEK_BALANCE_API_KEY` 或 `DEEPSEEK_API_KEY` 后下一次刷新会恢复。
+
+**改名后设置不见了？**
+
+0.4.0 从 `dsh-tui-codex-quota` 改名为 `dsh-tui-cost-meter`，settings 命名空间随之变化，
+旧配置不会自动迁移；在新面板里重新调整即可。
+
 ## 设置存储
 
 `/settings` 的写入走 dsh 的 settings 服务，落在当前 profile 的配置层，命名空间是本插件
 row id（默认 `dsh-tui-cost-meter`）。所有字段都是 volatile，改完立即生效，无需重启。
+
+## 已知限制
+
+- dsh-tui 目前没有把 Codex 后端 app-server 的 `account/rateLimits/read` 暴露给插件，所以本插件
+  直接读 OAuth 凭据并请求官方额度接口；它不依赖当前激活的模型是不是 Codex。
+- 只显示主 `codex` 额度桶；`additional_rate_limits` 里的其他桶（例如 code review）暂不显示。
+- 进度条宽度是终端字符数，窄终端会自动缩短。
+- 若宿主不提供 `tuiStatus` 富视图，退回的文本行宽度固定按 80 列估算。
+- DeepSeek 本月/今日优先来自平台后台；没有登录平台时回退到 dsh-cost-meter 账本。没有账本且平台不可用时，本月/今日显示 `—`。
+- 余额接口需要开放平台 API Key；只提供推理账号令牌时余额会显示 `—`，不影响费用与峰谷。
+- 本月消费优先读取 DeepSeek 平台后台（账号级、包含所有 API Key）；平台不可用时回退到 dsh-cost-meter 账本当月合计。账本口径不含 Codex 与第三方网关。
+- 峰谷提示按账本里的窗口计算；如果手动改了 dsh-cost-meter 的峰谷配置，下一次刷新后生效。
 
 ## 开发
 
@@ -197,17 +300,14 @@ ln -sfn "$HOME/.dsh/profiles/dsh-tui/node_modules/@deepseek-ai/schemastery" \
 npm test
 ```
 
-## 已知限制
+## 贡献
 
-- dsh-tui 目前没有把 Codex 后端 app-server 的 `account/rateLimits/read` 暴露给插件，所以本插件
-  直接读 OAuth 凭据并请求官方额度接口；它不依赖当前激活的模型是不是 Codex。
-- 只显示主 `codex` 额度桶；`additional_rate_limits` 里的其他桶（例如 code review）暂不显示。
-- 进度条宽度是终端字符数，窄终端会自动缩短。
-- 若宿主不提供 `tuiStatus` 富视图，退回的文本行宽度固定按 80 列估算。
-- DeepSeek 本月/今日优先来自平台后台；没有登录平台时回退到 dsh-cost-meter 账本。没有账本且平台不可用时，本月/今日显示 `—`。
-- 余额接口需要开放平台 API Key；只提供推理账号令牌时余额会显示 `—`，不影响费用与峰谷。
-- 本月消费优先读取 DeepSeek 平台后台（账号级、包含所有 API Key）；平台不可用时回退到 dsh-cost-meter 账本当月合计。账本口径不含 Codex 与第三方网关。
-- 峰谷提示按账本里的窗口计算；如果手动改了 dsh-cost-meter 的峰谷配置，下一次刷新后生效。
+欢迎提 issue / PR。提交前请至少跑：
+
+```sh
+npm test
+node --check lib/index.js
+```
 
 ## License
 
