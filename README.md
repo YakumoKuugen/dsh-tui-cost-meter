@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/dsh-tui-logo.svg" alt="dsh-TUI" width="420">
+</p>
+
 # dsh-tui-cost-meter
 
 ![Node](https://img.shields.io/badge/node-22.19%2B%20%7C%2024%2B-339933?logo=node.js&logoColor=white)
@@ -104,6 +108,7 @@ dsh plugin --profile dsh-tui add "$PWD/dsh-tui-cost-meter-0.4.0.tgz"
 │   ├── usage-client.js  # Codex 官方额度请求
 │   └── view.js          # Codex 状态行视图
 ├── test/                # node:test 单元测试
+├── assets/              # dsh-TUI logo 与来源说明
 ├── cordis.patch.yml     # profile bundle 插入行
 ├── package.json
 ├── README.md
