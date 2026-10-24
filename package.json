@@ -1,0 +1,47 @@
+{
+  "name": "dsh-tui-cost-meter",
+  "version": "0.4.0",
+  "description": "Codex 剩余额度 + DeepSeek 余额/费用/峰谷底栏插件，附带 dsh-tui /settings 设置面板。",
+  "keywords": [
+    "dsh",
+    "dsh-tui",
+    "codex",
+    "quota",
+    "status-line",
+    "plugin",
+    "deepseek",
+    "cost",
+    "balance",
+    "peak"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "engines": {
+    "node": "^22.19 || >=24"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/schemastery": ">=3.18.0"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "devDependencies": {
+    "@deepseek-ai/schemastery": "3.18.5"
+  }
+}

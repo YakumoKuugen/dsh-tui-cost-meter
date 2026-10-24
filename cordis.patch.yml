@@ -1,0 +1,10 @@
+# Bundle patch for dsh-tui-cost-meter.
+#
+# `dsh plugin --profile dsh-tui add <path>` reconciles this insert into the
+# profile's composition. The row deliberately declares no `inject`: the plugin
+# mounts early and probes `tuiStatus` / `tuiSettingsSections` itself, so a
+# profile without the dsh-codex plugin still gets the settings panel and a
+# "not signed in" placeholder instead of silently disappearing.
+- insert:
+    - id: dsh-tui-cost-meter
+      name: dsh-tui-cost-meter
