@@ -33,6 +33,26 @@ DeepSeek 平价 ━━┃────── 距峰时 1d19h
 
 ## 快速开始
 
+### 方式一：在 dsh-tui 里用仓库链接安装（推荐）
+
+在 dsh-tui 的输入框执行：
+
+```text
+/plugin install https://github.com/YakumoKuugen/dsh-tui-cost-meter
+```
+
+等价的简写：
+
+```text
+/plugin install github:YakumoKuugen/dsh-tui-cost-meter
+```
+
+安装器会从默认分支拉取仓库、提示第三方插件信任确认；按提示确认即可。安装完成后如果状态行没有立即出现，重启 dsh-tui 或执行 `/restart`。
+
+> 仓库目前没有 tag/release，Git 安装会跟随 `master` 的最新提交；需要固定版本时使用下面的 tarball 方式。
+
+### 方式二：本地 tarball 安装
+
 ```sh
 npm install
 npm test
@@ -117,6 +137,16 @@ dsh plugin --profile dsh-tui add "$PWD/dsh-tui-cost-meter-0.4.0.tgz"
 
 ## 安装与卸载
 
+### 从 GitHub 仓库直接安装
+
+```text
+/plugin install https://github.com/YakumoKuugen/dsh-tui-cost-meter
+```
+
+这是最省事的方式；需要固定版本或离线安装时，使用下面的 tarball 方式。
+
+### 本地 tarball 安装
+
 在本目录构建一个 tarball，然后用 dsh 的插件管理器装进 `dsh-tui` profile：
 
 ```sh
@@ -135,6 +165,14 @@ dsh plugin --profile dsh-tui add "$PWD/dsh-tui-cost-meter-0.4.0.tgz"
 2. `/settings` 里出现 **Codex 与 DeepSeek** 面板。
 
 卸载：
+
+在 dsh-tui 里：
+
+```text
+/plugin remove dsh-tui-cost-meter
+```
+
+或使用 CLI：
 
 ```sh
 dsh plugin --profile dsh-tui remove dsh-tui-cost-meter
