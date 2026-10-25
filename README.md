@@ -119,7 +119,7 @@ dsh plugin --profile dsh-tui add "$PWD/dsh-tui-cost-meter-0.5.0.tgz"
   - `status === 3` 时识别为不限量，显示 `不限量`；
   - 进度条同样按剩余额度填充，低于阈值变黄 / 变红；
   - 国内站 `minimaxi.com` 失败时自动回退国际站 `minimax.io`。
-- `/settings → Codex 与 DeepSeek` 面板：
+- `/settings → 计费模块` 面板，**Codex** 分组：
   - 是否显示
   - 额度窗口（自动 / 5 小时 / 每周 / 最短 / 最长）
   - 是否显示 `Codex 5h` 标签
@@ -128,11 +128,12 @@ dsh plugin --profile dsh-tui add "$PWD/dsh-tui-cost-meter-0.5.0.tgz"
   - 进度条宽度（4–40 字符）
   - 变黄阈值、变红阈值
   - 刷新间隔（15–3600 秒）
+- **DeepSeek** 分组：
   - DeepSeek 行开关、余额/今日/本月/峰谷开关
   - 余额使用条开关与宽度（4–30）
   - 峰谷切换 toast 开关
   - DeepSeek 刷新间隔（30–3600 秒）
-- `/settings → MiniMax 额度` 面板：
+- **MiniMax 额度** 分组：
   - 是否显示
   - 额度窗口（自动 / 本周期 / 每周）
   - 进度条宽度（4–40 字符）
@@ -193,7 +194,7 @@ dsh plugin --profile dsh-tui add "$PWD/dsh-tui-cost-meter-0.5.0.tgz"
 重启 dsh-tui 后：
 
 1. 底栏输入框上方出现 `Codex …` 与 `DeepSeek …` 两行；
-2. `/settings` 里出现 **Codex 与 DeepSeek** 面板。
+2. `/settings` 里出现 **计费模块** 面板（含 Codex / DeepSeek / MiniMax 三个分组）。
 
 卸载：
 
