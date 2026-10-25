@@ -7,22 +7,35 @@
 ![Node](https://img.shields.io/badge/node-22.19%2B%20%7C%2024%2B-339933?logo=node.js&logoColor=white)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![dsh-tui](https://img.shields.io/badge/dsh--tui-0.16.x-5B4B8A)
-![status](https://img.shields.io/badge/status-0.4.0-brightgreen)
+![status](https://img.shields.io/badge/status-0.5.0-brightgreen)
 
-在 dsh-tui 的底栏状态区显示两行：
+在 dsh-tui 的底栏状态区显示**当前会话模型**对应的计费模块：
 
 1. **Codex 剩余额度**：左边进度条，右边百分比；
-2. **DeepSeek 余额 / 今日费用 / 本月消费 / 峰谷倒计时**。
+2. **DeepSeek 余额 / 今日费用 / 本月消费 / 峰谷倒计时**；
+3. **MiniMax Token Plan 剩余额度**：本周期 / 周额度进度条。
 
-设置面板集成在 `/settings` 里，可直接改窗口、进度条宽度、颜色阈值、DeepSeek 费用项和刷新间隔，实时生效。
+插件会读取 `$DSH_TUI_HOME/model.json`（默认 `~/.dsh-tui/model.json`）里 dsh-tui 每次
+`/model` 切换后写入的当前 provider，**只渲染匹配的那个模块**——用 Codex 时不显示
+DeepSeek / MiniMax 行，用 MiniMax 时不显示 Codex / DeepSeek 行；当前路由读取不到时
+（例如文件还没生成）三个模块都照常显示，避免突然整块消失。
+
+设置面板集成在 `/settings` 里，可直接改窗口、进度条宽度、颜色阈值、费用项和刷新间隔，实时生效。
 
 ```text
 Codex 5h ███████░░░░░ 63% · 2h13m
+```
+
+```text
 DeepSeek 余额 ¥60.50 · 本月 ¥130.18 · 今日 ¥4.82 ██████████
 DeepSeek 平价 ━━┃────── 距峰时 1d19h
 ```
 
-第一行末尾是余额使用条：绿色剩余、橙色今日、暗色此前已用；第二行是峰谷进度条，
+```text
+MiniMax 5h ███████░░░ 68% · 周 76%
+```
+
+DeepSeek 第一行末尾是余额使用条：绿色剩余、橙色今日、暗色此前已用；第二行是峰谷进度条，
 `┃` 是当前时刻标记。
 
 > dsh-tui 的插件安全接缝只开放“输入框上方的状态行”（`ctx.tuiStatus`），本插件就挂在那里；
@@ -30,6 +43,9 @@ DeepSeek 平价 ━━┃────── 距峰时 1d19h
 
 > **改名说明**：0.4.0 起插件名从 `dsh-tui-codex-quota` 改为 `dsh-tui-cost-meter`。
 > 升级时请先卸载旧包，再安装新包；旧设置命名空间不会自动迁移。
+
+> **0.5.0**：新增 MiniMax Token Plan 额度行，并按当前会话模型只显示对应模块。
+> 升级后旧设置保留，新增的 `MiniMax 额度` 分组默认开启。
 
 ## 快速开始
 
@@ -58,7 +74,7 @@ npm install
 npm test
 
 npm pack --pack-destination .
-dsh plugin --profile dsh-tui add "$PWD/dsh-tui-cost-meter-0.4.0.tgz"
+dsh plugin --profile dsh-tui add "$PWD/dsh-tui-cost-meter-0.5.0.tgz"
 ```
 
 然后重启 dsh-tui（或在会话里执行 `/restart`）。
@@ -86,6 +102,7 @@ dsh plugin --profile dsh-tui add "$PWD/dsh-tui-cost-meter-0.4.0.tgz"
 
 ## 功能
 
+- 只显示**当前会话模型**对应的计费模块（Codex / DeepSeek / MiniMax），路由未知时全部显示。
 - 进度条按 **剩余额度** 填充，右侧显示整数百分比。
 - 自动读取 Codex 服务端返回的滚动窗口（5 小时 / 每周 / 最短 / 最长）。
 - 剩余额度低于阈值时进度条变黄 / 变红。
@@ -97,6 +114,11 @@ dsh plugin --profile dsh-tui add "$PWD/dsh-tui-cost-meter-0.4.0.tgz"
   - 当前峰时/平价、距离下一次切换的倒计时；
   - 两行显示：第一行余额/本月/今日 + 余额使用条，第二行峰时/平价 + 峰谷进度条；
   - 峰谷切换时弹一次 toast，并在状态行显示 60 秒“已进入峰时/平价”提示。
+- MiniMax 行显示：
+  - Token Plan 的**本周期剩余百分比**（`auto` 模式按 `current_interval_*`，也可固定看周额度）；
+  - `status === 3` 时识别为不限量，显示 `不限量`；
+  - 进度条同样按剩余额度填充，低于阈值变黄 / 变红；
+  - 国内站 `minimaxi.com` 失败时自动回退国际站 `minimax.io`。
 - `/settings → Codex 与 DeepSeek` 面板：
   - 是否显示
   - 额度窗口（自动 / 5 小时 / 每周 / 最短 / 最长）
@@ -110,6 +132,12 @@ dsh plugin --profile dsh-tui add "$PWD/dsh-tui-cost-meter-0.4.0.tgz"
   - 余额使用条开关与宽度（4–30）
   - 峰谷切换 toast 开关
   - DeepSeek 刷新间隔（30–3600 秒）
+- `/settings → MiniMax 额度` 面板：
+  - 是否显示
+  - 额度窗口（自动 / 本周期 / 每周）
+  - 进度条宽度（4–40 字符）
+  - 变黄阈值、变红阈值
+  - 刷新间隔（30–3600 秒）
 - 未登录、登录过期、网络失败时显示暗色占位提示，不打断输入。
 - 富状态视图被宿主拒绝时自动退回纯文本状态行（同样是进度条 + 百分比）。
 
@@ -118,10 +146,13 @@ dsh plugin --profile dsh-tui add "$PWD/dsh-tui-cost-meter-0.4.0.tgz"
 ```text
 .
 ├── lib/                 # 插件运行时代码（不含 React / Ink 依赖）
+│   ├── active-model.js   # 读取 model.json，判断当前 provider 家族
 │   ├── config.js        # volatile 配置 schema
 │   ├── credentials.js   # Codex OAuth 只读发现
+│   ├── credential-file.js # 共享的凭据文档只读解析
 │   ├── deepseek*.js     # DeepSeek 余额 / 本月消费 / 峰谷
 │   ├── index.js         # Cordis apply：状态行、设置面板、轮询
+│   ├── minimax*.js      # MiniMax Token Plan 客户端 / store / 视图
 │   ├── quota.js         # Codex 额度纯投影
 │   ├── settings.js      # /settings 字段声明
 │   ├── store.js         # Codex 额度轮询
@@ -153,7 +184,7 @@ dsh plugin --profile dsh-tui add "$PWD/dsh-tui-cost-meter-0.4.0.tgz"
 cd /path/to/dsh-tui-cost-meter
 npm pack --pack-destination .
 
-dsh plugin --profile dsh-tui add "$PWD/dsh-tui-cost-meter-0.4.0.tgz"
+dsh plugin --profile dsh-tui add "$PWD/dsh-tui-cost-meter-0.5.0.tgz"
 ```
 
 > 安装后请保留生成的 tarball：profile 的本地依赖指向它，删除后在该 profile 里重新
@@ -233,6 +264,44 @@ GET https://chatgpt.com/backend-api/wham/usage
 若使用 HTTP(S) 代理，请确保 dsh-tui 的 Node 进程带上了代理环境变量（本机已验证
 `NODE_USE_ENV_PROXY=1` + `HTTPS_PROXY` 可用）。
 
+### MiniMax Token Plan
+
+MiniMax 行读取的是 **Token Plan 的剩余额度**，不是账户余额或 token 用量：
+
+```text
+GET https://www.minimaxi.com/v1/token_plan/remains      # 国内站
+GET https://www.minimax.io/v1/token_plan/remains        # 国际站回退
+```
+
+请求头 `Authorization: Bearer <key>`，响应里的 `model_remains[]` 提供
+`current_interval_remaining_percent`（本周期剩余百分比）、`current_weekly_remaining_percent`
+（周剩余百分比）与对应的 `*_status`；`status === 3` 视为不限量。注意这些数字是**剩余**比例，
+和 Codex 的进度条语义一致。
+
+API Key 按以下顺序读取，任何一步失败都会继续尝试下一步：
+
+1. `MINIMAX_CN_API_KEY`，其次 `MINIMAX_API_KEY`：先走 `ctx.credentials`；
+2. 服务缺席时直接读 `$DSH_HOME/.credentials.yaml` 的 `refs` 段；
+3. 进程环境变量 `MINIMAX_CN_API_KEY` / `MINIMAX_API_KEY`。
+
+只向上面两个官方域名发请求；两站对 Key 的归属校验不同，国内 Key 打国际站会被拒绝，
+所以插件会先请求国内站、失败后再试国际站。没有任何 Key 时整行隐藏，不显示错误。
+
+### 当前会话模型（只显示对应模块）
+
+dsh-tui 每次 `/model` 切换都会把当前路由写进 `$DSH_TUI_HOME/model.json`
+（默认 `~/.dsh-tui/model.json`，形如 `{"provider":"minimax-cn","model":"MiniMax-M3.1-Flash"}`）。
+插件每 5 秒只读一次这个文件，据此决定显示哪个模块：
+
+| provider | 显示的模块 |
+| --- | --- |
+| `openai-codex` | Codex 额度 |
+| `deepseek` / `deepseek-official` / `deepseek-account`（含 `llm-` 前缀） | DeepSeek 费用 |
+| `minimax` / `minimax-cn` | MiniMax Token Plan |
+| 文件缺失 / 无法解析 | 三个模块都显示 |
+
+插件不会写这个文件，也不依赖宿主未公开的 API；`DSH_TUI_HOME` 可覆盖默认路径（便于多 profile）。
+
 ### 登录过期 / 偶尔显示过期
 
 访问令牌由 dsh-tui / dsh-codex 的后台流程刷新。插件看到一次 401 时**不会立刻**判定登录失效：
@@ -266,11 +335,14 @@ UTC 窗口 `[1,4)`、`[6,10)`（北京时间 09:00–12:00、14:00–18:00），
   - `$DSH_HOME/.openai-codex-auth.json`：dsh-codex 凭据
   - `$CODEX_HOME/auth.json`：官方 Codex CLI 的 `tokens`
   - `$DSH_HOME/storages/cost-meter/ledger.json`：dsh-cost-meter 账本
-  - `$DSH_HOME/.credentials.yaml`：DeepSeek 开放平台 Key 与平台账号 grant
+  - `$DSH_HOME/.credentials.yaml`：DeepSeek / MiniMax 开放平台 Key 与平台账号 grant
+  - `$DSH_TUI_HOME/model.json`：当前会话 provider / model（只读，用于选择显示哪个模块）
 - **访问的网络端点**
   - `https://chatgpt.com/backend-api/wham/usage`
   - `https://api.deepseek.com/user/balance`
   - `https://platform.deepseek.com/api/v0/usage/by_api_key/cost`
+  - `https://www.minimaxi.com/v1/token_plan/remains`
+  - `https://www.minimax.io/v1/token_plan/remains`
 - **不会做的事**
   - 不写回 OAuth / API Key / 账本文件
   - 不在状态行、日志或错误信息里输出 token
@@ -284,7 +356,7 @@ UTC 窗口 `[1,4)`、`[6,10)`（北京时间 09:00–12:00、14:00–18:00），
 - 纯 ESM，无 native 依赖；Node `^22.19 || >=24`
 - 插件 peer：`@deepseek-ai/schemastery >=3.18.0`
 - 开发验证环境：dsh `0.2.1-rc.2`、dsh-tui `0.16.1`
-- 单元测试：`node --test test/*.test.js`，当前 95 个测试
+- 单元测试：`node --test test/*.test.js`，当前 122 个测试
 - 可选依赖：`dsh-codex`（Codex 额度服务）与 `dsh-cost-meter`（账本）
 - 未安装可选依赖时，插件仍可安装并显示对应占位/回退数据
 
@@ -293,7 +365,22 @@ UTC 窗口 `[1,4)`、`[6,10)`（北京时间 09:00–12:00、14:00–18:00），
 **为什么在输入框上方，而不是宿主 footer？**
 
 dsh-tui 没有把宿主 footer 的模型/目录行开放给插件；`ctx.tuiStatus` 是官方支持的底栏状态接缝，
-所以两条状态行渲染在输入框正上方。插件不会修改 dsh-tui 本身。
+所以状态行渲染在输入框正上方。插件不会修改 dsh-tui 本身。
+
+**为什么只看到一行（或三行）？**
+
+0.5.0 起按当前会话模型过滤：用 Codex 只显示 Codex 行，用 DeepSeek 只显示 DeepSeek 的两行，
+用 MiniMax 只显示 MiniMax 行。如果你在 `/model` 里切换后仍看到旧模块，等 5 秒（路由轮询间隔）
+或点一下状态行强制刷新。看不到 `~/.dsh-tui/model.json` 时会退回“全部显示”。
+
+**MiniMax 行显示 68%，是用了 32% 吗？**
+
+是。`token_plan/remains` 返回的是**剩余**百分比，进度条和百分比都按剩余额度展示，和 Codex 行一致。
+
+**为什么 MiniMax 行不显示？**
+
+三种可能：当前会话模型不是 MiniMax（被过滤掉了）、没有配置 `MINIMAX_CN_API_KEY` /
+`MINIMAX_API_KEY`、接口请求失败。没有 Key 时整行隐藏，不会显示错误。
 
 **为什么“本月”金额和本地账本对不上？**
 
@@ -318,7 +405,8 @@ row id（默认 `dsh-tui-cost-meter`）。所有字段都是 volatile，改完�
 ## 已知限制
 
 - dsh-tui 目前没有把 Codex 后端 app-server 的 `account/rateLimits/read` 暴露给插件，所以本插件
-  直接读 OAuth 凭据并请求官方额度接口；它不依赖当前激活的模型是不是 Codex。
+  直接读 OAuth 凭据并请求官方额度接口；Codex 行本身不依赖当前激活的模型是不是 Codex，
+  但“是否渲染”取决于当前会话 provider。
 - 只显示主 `codex` 额度桶；`additional_rate_limits` 里的其他桶（例如 code review）暂不显示。
 - 进度条宽度是终端字符数，窄终端会自动缩短。
 - 若宿主不提供 `tuiStatus` 富视图，退回的文本行宽度固定按 80 列估算。
@@ -326,6 +414,10 @@ row id（默认 `dsh-tui-cost-meter`）。所有字段都是 volatile，改完�
 - 余额接口需要开放平台 API Key；只提供推理账号令牌时余额会显示 `—`，不影响费用与峰谷。
 - 本月消费优先读取 DeepSeek 平台后台（账号级、包含所有 API Key）；平台不可用时回退到 dsh-cost-meter 账本当月合计。账本口径不含 Codex 与第三方网关。
 - 峰谷提示按账本里的窗口计算；如果手动改了 dsh-cost-meter 的峰谷配置，下一次刷新后生效。
+- MiniMax 行只展示 Token Plan 的剩余百分比；不做 token 计数、不读账本、不显示金额。
+  国内站被拒时会回退国际站，但国际站要求国际站 Key，两者不通用。
+- 当前模型路由来自 `~/.dsh-tui/model.json`；如果宿主版本不再写这个文件，插件会退回
+  “三个模块都显示”，不会报错。
 
 ## 开发
 

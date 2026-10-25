@@ -30,6 +30,12 @@ test('readConfig unwraps volatile handles and clamps out-of-range values', () =>
     deepseekBarWidth: { get: () => 2 },
     deepseekPeakNotify: { get: () => false },
     deepseekRefreshSeconds: { get: () => 1 },
+    minimaxEnabled: { get: () => false },
+    minimaxWindow: { get: () => 'weekly' },
+    minimaxBarWidth: { get: () => 2 },
+    minimaxWarnAt: { get: () => 200 },
+    minimaxDangerAt: { get: () => -5 },
+    minimaxRefreshSeconds: { get: () => 5 },
   }
   assert.deepEqual(readConfig(config), {
     enabled: true,
@@ -50,6 +56,12 @@ test('readConfig unwraps volatile handles and clamps out-of-range values', () =>
     deepseekBarWidth: 4,
     deepseekPeakNotify: false,
     deepseekRefreshSeconds: 30,
+    minimaxEnabled: false,
+    minimaxWindow: 'weekly',
+    minimaxBarWidth: 4,
+    minimaxWarnAt: 100,
+    minimaxDangerAt: 0,
+    minimaxRefreshSeconds: 30,
   })
 })
 
