@@ -75,6 +75,7 @@ test('a missing key parks the line without an error', async () => {
   await startAndWait()
   poller.stop()
   assert.equal(store.getSnapshot().phase, 'disabled')
+  assert.equal(store.getSnapshot().reason, 'missing-key')
   assert.equal(store.getSnapshot().error, undefined)
 })
 
@@ -92,4 +93,5 @@ test('does not query while the line is disabled', async () => {
   poller.stop()
   assert.equal(calls(), 0)
   assert.equal(store.getSnapshot().phase, 'disabled')
+  assert.equal(store.getSnapshot().reason, 'feature-off')
 })

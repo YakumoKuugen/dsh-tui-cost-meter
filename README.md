@@ -286,7 +286,8 @@ API Key 按以下顺序读取，任何一步失败都会继续尝试下一步：
 3. 进程环境变量 `MINIMAX_CN_API_KEY` / `MINIMAX_API_KEY`。
 
 只向上面两个官方域名发请求；两站对 Key 的归属校验不同，国内 Key 打国际站会被拒绝，
-所以插件会先请求国内站、失败后再试国际站。没有任何 Key 时整行隐藏，不显示错误。
+所以插件会先请求国内站、失败后再试国际站。没有任何 Key 时显示暗色占位 `MiniMax 未配置 API Key`，
+不会报错；把 MiniMax 行关掉或切到别的模型就不再显示。
 
 ### 当前会话模型（只显示对应模块）
 
@@ -381,7 +382,7 @@ dsh-tui 没有把宿主 footer 的模型/目录行开放给插件；`ctx.tuiStat
 **为什么 MiniMax 行不显示？**
 
 三种可能：当前会话模型不是 MiniMax（被过滤掉了）、没有配置 `MINIMAX_CN_API_KEY` /
-`MINIMAX_API_KEY`、接口请求失败。没有 Key 时整行隐藏，不会显示错误。
+`MINIMAX_API_KEY`、接口请求失败。没有 Key 时会显示 `MiniMax 未配置 API Key` 占位，不会报错。
 
 **为什么“本月”金额和本地账本对不上？**
 

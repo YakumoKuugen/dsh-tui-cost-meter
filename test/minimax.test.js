@@ -100,7 +100,11 @@ test('shows placeholders for missing, loading and failed states', () => {
   assert.equal(buildMiniMaxViewModel({ phase: 'idle' }, CONFIG)?.placeholder, '读取中…')
   assert.equal(buildMiniMaxViewModel({ phase: 'error' }, CONFIG)?.placeholder, '额度不可用')
   assert.equal(buildMiniMaxViewModel({ phase: 'ready', quota: {} }, CONFIG)?.placeholder, '无额度数据')
-  assert.equal(buildMiniMaxViewModel({ phase: 'disabled' }, CONFIG), undefined)
+  assert.equal(buildMiniMaxViewModel({ phase: 'disabled', reason: 'feature-off' }, CONFIG), undefined)
+  assert.equal(
+    buildMiniMaxViewModel({ phase: 'disabled', reason: 'missing-key' }, CONFIG)?.placeholder,
+    '未配置 API Key',
+  )
   assert.equal(buildMiniMaxViewModel({ phase: 'ready' }, { ...CONFIG, minimaxEnabled: false }), undefined)
 })
 
