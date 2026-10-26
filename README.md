@@ -7,7 +7,7 @@
 ![Node](https://img.shields.io/badge/node-22.19%2B%20%7C%2024%2B-339933?logo=node.js&logoColor=white)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![dsh-tui](https://img.shields.io/badge/dsh--tui-0.16.x-5B4B8A)
-![status](https://img.shields.io/badge/status-0.5.0-brightgreen)
+![status](https://img.shields.io/badge/status-0.5.1-brightgreen)
 
 在 dsh-tui 的底栏状态区显示**当前会话模型**对应的计费模块：
 
@@ -15,7 +15,7 @@
 2. **DeepSeek 余额 / 今日费用 / 本月消费 / 峰谷倒计时**；
 3. **MiniMax Token Plan 剩余额度**：本周期 / 周额度进度条。
 
-插件会读取 `$DSH_TUI_HOME/model.json`（默认 `~/.dsh-tui/model.json`）里 dsh-tui 每次
+插件会读取 `~/.dsh-tui/model.json` 里 dsh-tui 每次
 `/model` 切换后写入的当前 provider，**只渲染匹配的那个模块**——用 Codex 时不显示
 DeepSeek / MiniMax 行，用 MiniMax 时不显示 Codex / DeepSeek 行；当前路由读取不到时
 （例如文件还没生成）三个模块都照常显示，避免突然整块消失。
@@ -46,6 +46,10 @@ DeepSeek 第一行末尾是余额使用条：绿色剩余、橙色今日、暗�
 
 > **0.5.0**：新增 MiniMax Token Plan 额度行，并按当前会话模型只显示对应模块。
 > 升级后旧设置保留，新增的 `MiniMax 额度` 分组默认开启。
+>
+> **0.5.1**：路由文件路径改成和宿主完全一致（固定 `~/.dsh-tui/model.json`，不再读
+> `DSH_TUI_HOME`）；新增 `scripts/doctor.mjs` 诊断脚本；Node 要求放宽为 `>=22.19`，
+> schemastery 改为可选 peer，减少安装时的 peer 冲突提示。
 
 ## 快速开始
 
@@ -74,7 +78,7 @@ npm install
 npm test
 
 npm pack --pack-destination .
-dsh plugin --profile dsh-tui add "$PWD/dsh-tui-cost-meter-0.5.0.tgz"
+dsh plugin --profile dsh-tui add "$PWD/dsh-tui-cost-meter-0.5.1.tgz"
 ```
 
 然后重启 dsh-tui（或在会话里执行 `/restart`）。
@@ -159,6 +163,7 @@ dsh plugin --profile dsh-tui add "$PWD/dsh-tui-cost-meter-0.5.0.tgz"
 │   ├── store.js         # Codex 额度轮询
 │   ├── usage-client.js  # Codex 官方额度请求
 │   └── view.js          # Codex 状态行视图
+├── scripts/doctor.mjs    # 只读诊断：版本 / 路由 / 凭据 / 安装日志
 ├── test/                # node:test 单元测试
 ├── assets/              # dsh-TUI logo 与来源说明
 ├── cordis.patch.yml     # profile bundle 插入行
@@ -185,7 +190,7 @@ dsh plugin --profile dsh-tui add "$PWD/dsh-tui-cost-meter-0.5.0.tgz"
 cd /path/to/dsh-tui-cost-meter
 npm pack --pack-destination .
 
-dsh plugin --profile dsh-tui add "$PWD/dsh-tui-cost-meter-0.5.0.tgz"
+dsh plugin --profile dsh-tui add "$PWD/dsh-tui-cost-meter-0.5.1.tgz"
 ```
 
 > 安装后请保留生成的 tarball：profile 的本地依赖指向它，删除后在该 profile 里重新
@@ -193,8 +198,51 @@ dsh plugin --profile dsh-tui add "$PWD/dsh-tui-cost-meter-0.5.0.tgz"
 
 重启 dsh-tui 后：
 
-1. 底栏输入框上方出现 `Codex …` 与 `DeepSeek …` 两行；
+1. 底栏输入框上方只出现**当前模型**对应的额度行（Codex / DeepSeek / MiniMax 三选一）；
 2. `/settings` 里出现 **计费模块** 面板（含 Codex / DeepSeek / MiniMax 三个分组）。
+
+### 安装冲突 / 只显示 Codex（Windows 常见）
+
+先跑一次诊断脚本（只读；不写文件，也不打印密钥原文）：
+
+```sh
+# macOS / Linux
+node "$HOME/.dsh/profiles/dsh-tui/node_modules/dsh-tui-cost-meter/scripts/doctor.mjs"
+```
+
+```powershell
+# Windows PowerShell
+node "$env:USERPROFILE\.dsh\profiles\dsh-tui\node_modules\dsh-tui-cost-meter\scripts\doctor.mjs"
+```
+
+它会打印：已安装版本、profile 依赖与 bundles、`~/.dsh-tui/model.json` 的 provider 与家族、
+凭据是否就位，以及**最近一次 `dsh plugin` 安装日志的末尾 30 行**（已脱敏）。常见输出与处理：
+
+| 现象 | 原因 | 处理 |
+| --- | --- | --- |
+| `Issues with peer dependencies found` | pnpm 的 peer 警告，一般不影响 | 0.5.1 起 schemastery 标为可选 peer，可忽略 |
+| `ENOENT … .tgz`、安装被回滚 | profile 残留了指向已删除 tarball 的 `file:` 依赖 | 先 `remove` 再重新 `add` |
+| `installation rejected: … incompatible with dsh` | 插件声明的 dsh requirements 与当前运行时不符 | 换兼容版本，或 `dsh plugin allow-version` |
+| `EPERM` / `EACCES` | Windows 上 pnpm 建符号链接失败 | 开启“开发者模式”，或用管理员终端重装 |
+| 只显示 Codex、切模型不跟随 | 装的是 0.4.0（没有 MiniMax / 过滤）；或旧版读到了陈旧的 `DSH_TUI_HOME` | 升级到 0.5.1+ 并重启 |
+
+`dsh plugin add` 失败时安装器会回滚 profile（package.json、lockfile、node_modules 都还原），
+所以**旧版本会继续跑**——这就是“装完还是只有 Codex”的常见原因。
+
+干净重装（PowerShell）：
+
+```powershell
+dsh plugin --profile dsh-tui remove dsh-tui-cost-meter
+dsh plugin --profile dsh-tui remove dsh-tui-codex-quota   # 如果装过 0.3.x 的旧名
+dsh plugin --profile dsh-tui add github:YakumoKuugen/dsh-tui-cost-meter
+# 然后重启 dsh-tui，或在会话里执行 /restart
+```
+
+装完确认版本：
+
+```powershell
+node -p "require('$env:USERPROFILE/.dsh/profiles/dsh-tui/node_modules/dsh-tui-cost-meter/package.json').version"
+```
 
 卸载：
 
@@ -291,8 +339,10 @@ API Key 按以下顺序读取，任何一步失败都会继续尝试下一步：
 
 ### 当前会话模型（只显示对应模块）
 
-dsh-tui 每次 `/model` 切换都会把当前路由写进 `$DSH_TUI_HOME/model.json`
-（默认 `~/.dsh-tui/model.json`，形如 `{"provider":"minimax-cn","model":"MiniMax-M3.1-Flash"}`）。
+dsh-tui 每次 `/model` 切换都会把当前路由写进 `~/.dsh-tui/model.json`
+（形如 `{"provider":"minimax-cn","model":"MiniMax-M3.1-Flash"}`）。这个路径写死在宿主的
+`utils/paths.js` 里，**不读任何环境变量**，插件也按同样的路径读；早期版本曾支持
+`DSH_TUI_HOME`，那会读到一份宿主根本不更新的旧文件，导致状态行永远停在旧模型上，0.5.1 起已移除。
 插件每 5 秒只读一次这个文件，据此决定显示哪个模块：
 
 | provider | 显示的模块 |
@@ -302,7 +352,7 @@ dsh-tui 每次 `/model` 切换都会把当前路由写进 `$DSH_TUI_HOME/model.j
 | `minimax` / `minimax-cn` | MiniMax Token Plan |
 | 文件缺失 / 无法解析 | 三个模块都显示 |
 
-插件不会写这个文件，也不依赖宿主未公开的 API；`DSH_TUI_HOME` 可覆盖默认路径（便于多 profile）。
+插件不会写这个文件，也不依赖宿主未公开的 API。
 
 ### 登录过期 / 偶尔显示过期
 
@@ -338,7 +388,7 @@ UTC 窗口 `[1,4)`、`[6,10)`（北京时间 09:00–12:00、14:00–18:00），
   - `$CODEX_HOME/auth.json`：官方 Codex CLI 的 `tokens`
   - `$DSH_HOME/storages/cost-meter/ledger.json`：dsh-cost-meter 账本
   - `$DSH_HOME/.credentials.yaml`：DeepSeek / MiniMax 开放平台 Key 与平台账号 grant
-  - `$DSH_TUI_HOME/model.json`：当前会话 provider / model（只读，用于选择显示哪个模块）
+  - `~/.dsh-tui/model.json`：当前会话 provider / model（只读，用于选择显示哪个模块）
 - **访问的网络端点**
   - `https://chatgpt.com/backend-api/wham/usage`
   - `https://api.deepseek.com/user/balance`
@@ -359,6 +409,7 @@ UTC 窗口 `[1,4)`、`[6,10)`（北京时间 09:00–12:00、14:00–18:00），
 - 插件 peer：`@deepseek-ai/schemastery >=3.18.0`
 - 开发验证环境：dsh `0.2.1-rc.2`、dsh-tui `0.16.1`
 - 单元测试：`node --test test/*.test.js`，当前 122 个测试
+- 安装/显示自查：`npm run doctor`（或直接 `node scripts/doctor.mjs`）
 - 可选依赖：`dsh-codex`（Codex 额度服务）与 `dsh-cost-meter`（账本）
 - 未安装可选依赖时，插件仍可安装并显示对应占位/回退数据
 

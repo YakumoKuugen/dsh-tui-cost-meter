@@ -1,6 +1,6 @@
 {
   "name": "dsh-tui-cost-meter",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Codex 剩余额度 + DeepSeek 余额/费用/峰谷 + MiniMax Token Plan 底栏插件，只显示当前会话模型对应的计费模块。",
   "keywords": [
     "dsh",
@@ -26,14 +26,16 @@
   "files": [
     "assets",
     "lib",
+    "scripts",
     "cordis.patch.yml",
     "README.md"
   ],
   "engines": {
-    "node": "^22.19 || >=24"
+    "node": ">=22.19"
   },
   "scripts": {
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "doctor": "node scripts/doctor.mjs"
   },
   "peerDependencies": {
     "@deepseek-ai/schemastery": ">=3.18.0"
@@ -45,5 +47,10 @@
   },
   "devDependencies": {
     "@deepseek-ai/schemastery": "3.18.5"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/schemastery": {
+      "optional": true
+    }
   }
 }

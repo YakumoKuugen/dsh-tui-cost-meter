@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -51,13 +51,17 @@ test('shows a module only while its family is the active one', () => {
 test('reads the route from the host preference file', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'cost-meter-route-'))
   try {
-    await writeFile(join(dir, 'model.json'), JSON.stringify({ provider: 'minimax-cn', model: 'MiniMax-M3.1-Flash' }))
-    const route = await readActiveRoute({ DSH_TUI_HOME: dir })
+    await mkdir(join(dir, '.dsh-tui'), { recursive: true })
+    await writeFile(
+      join(dir, '.dsh-tui', 'model.json'),
+      JSON.stringify({ provider: 'minimax-cn', model: 'MiniMax-M3.1-Flash' }),
+    )
+    const route = await readActiveRoute(dir)
     assert.equal(route?.provider, 'minimax-cn')
     assert.equal(route?.model, 'MiniMax-M3.1-Flash')
     assert.equal(route?.family, 'minimax')
 
-    assert.equal(await readModelPref({ DSH_TUI_HOME: join(dir, 'absent') }), undefined)
+    assert.equal(await readModelPref(join(dir, 'absent')), undefined)
   } finally {
     await rm(dir, { recursive: true, force: true })
   }
@@ -77,6 +81,6 @@ test('the route watcher publishes a changed provider', async () => {
 })
 
 test('the route path follows the host data directory', () => {
-  assert.ok(modelPrefPath({ DSH_TUI_HOME: '/tmp/x' }).endsWith('/tmp/x/model.json'))
-  assert.ok(modelPrefPath({}).endsWith('.dsh-tui/model.json'))
+  assert.equal(modelPrefPath('/tmp/x'), join('/tmp/x', '.dsh-tui', 'model.json'))
+  assert.ok(modelPrefPath('/tmp/x').endsWith('.dsh-tui/model.json'))
 })
