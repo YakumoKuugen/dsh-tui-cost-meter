@@ -252,7 +252,7 @@ node "$env:USERPROFILE\.dsh\profiles\dsh-tui\node_modules\dsh-tui-cost-meter\scr
 | `ENOENT … .tgz`、安装被回滚 | profile 残留了指向已删除 tarball 的 `file:` 依赖 | 先 `remove` 再重新 `add` |
 | `installation rejected: … incompatible with dsh` | 插件声明的 dsh requirements 与当前运行时不符 | 换兼容版本，或 `dsh plugin allow-version` |
 | `EPERM` / `EACCES` | Windows 上 pnpm 建符号链接失败 | 开启“开发者模式”，或用管理员终端重装 |
-| 只显示 Codex、切模型不跟随 | 装的是 0.4.0（没有 MiniMax / 过滤）；或旧版读到了陈旧的 `DSH_TUI_HOME` | 升级到 0.5.1+ 并重启 |
+| 只显示 Codex、切模型不跟随 | 装的是 0.4.0（没有 MiniMax / 过滤）；或旧版读到了陈旧的 `DSH_TUI_HOME` | 升级到 0.6.0+ 并重启 |
 
 `dsh plugin add` 失败时安装器会回滚 profile（package.json、lockfile、node_modules 都还原），
 所以**旧版本会继续跑**——这就是“装完还是只有 Codex”的常见原因。
