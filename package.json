@@ -1,7 +1,7 @@
 {
   "name": "dsh-tui-cost-meter",
-  "version": "0.5.1",
-  "description": "Codex 剩余额度 + DeepSeek 余额/费用/峰谷 + MiniMax Token Plan 底栏插件，只显示当前会话模型对应的计费模块。",
+  "version": "0.6.0",
+  "description": "Codex 剩余额度 + DeepSeek 余额/费用/峰谷 + MiniMax + CommandCode 底栏插件，只显示当前窗口/会话模型对应的计费模块。",
   "keywords": [
     "dsh",
     "dsh-tui",
@@ -11,6 +11,7 @@
     "plugin",
     "deepseek",
     "minimax",
+    "commandcode",
     "cost",
     "balance",
     "peak"

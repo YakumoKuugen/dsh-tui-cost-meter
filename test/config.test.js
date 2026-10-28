@@ -36,6 +36,13 @@ test('readConfig unwraps volatile handles and clamps out-of-range values', () =>
     minimaxWarnAt: { get: () => 200 },
     minimaxDangerAt: { get: () => -5 },
     minimaxRefreshSeconds: { get: () => 5 },
+    commandcodeEnabled: { get: () => false },
+    commandcodeWindow: { get: () => 'weekly' },
+    commandcodeBarWidth: { get: () => 2 },
+    commandcodeWarnAt: { get: () => 200 },
+    commandcodeDangerAt: { get: () => -5 },
+    commandcodeShowCredits: { get: () => false },
+    commandcodeRefreshSeconds: { get: () => 5 },
   }
   assert.deepEqual(readConfig(config), {
     enabled: true,
@@ -62,6 +69,13 @@ test('readConfig unwraps volatile handles and clamps out-of-range values', () =>
     minimaxWarnAt: 100,
     minimaxDangerAt: 0,
     minimaxRefreshSeconds: 30,
+    commandcodeEnabled: false,
+    commandcodeWindow: 'weekly',
+    commandcodeBarWidth: 4,
+    commandcodeWarnAt: 100,
+    commandcodeDangerAt: 0,
+    commandcodeShowCredits: false,
+    commandcodeRefreshSeconds: 30,
   })
 })
 

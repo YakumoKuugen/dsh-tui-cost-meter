@@ -18,6 +18,8 @@ import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { familyOfProvider } from '../lib/active-model.js'
+
 const argv = process.argv.slice(2)
 const json = argv.includes('--json')
 const profileFlag = argv.indexOf('--profile')
@@ -138,21 +140,14 @@ if (report.route.dshTuiHome !== null) {
 const modelPref = readJson(modelPath)
 if (modelPref === undefined) {
   report.route.exists = false
-  report.route.note = '没有 model.json：dsh-tui 还没用 /model 选过模型，三个模块都会显示'
+  report.route.note = '没有 model.json：事件流未到时全部模块都会显示（0.6.0 起以会话事件为准）'
 } else {
   report.route.exists = true
   report.route.provider = modelPref.provider
   report.route.model = modelPref.model
-  const id = String(modelPref.provider ?? '').toLowerCase().replace(/^llm-/, '')
-  report.route.family = id === 'openai-codex' || id === 'codex' || id.startsWith('openai-codex')
-    ? 'codex'
-    : id === 'minimax' || id.startsWith('minimax-')
-      ? 'minimax'
-      : id === 'deepseek' || id.startsWith('deepseek-') || id.endsWith('-deepseek')
-        ? 'deepseek'
-        : undefined
+  report.route.family = familyOfProvider(modelPref.provider)
   report.route.note = report.route.family === undefined
-    ? 'provider 无法识别：三个模块都会显示'
+    ? 'provider 无法识别：全部模块都会显示'
     : `只显示 ${report.route.family} 模块`
 
   try {
@@ -196,6 +191,8 @@ try {
 const envNames = [
   'MINIMAX_CN_API_KEY',
   'MINIMAX_API_KEY',
+  'COMMAND_API_KEY',
+  'COMMANDCODE_API_KEY',
   'DEEPSEEK_BALANCE_API_KEY',
   'DEEPSEEK_API_KEY',
 ]
@@ -279,8 +276,12 @@ if (report.route.dataDirWritable === false) {
 if (report.route.stale === true) {
   report.verdict.push('model.json 长期没更新（见 route.note）：切一次 /model，看是否弹出“无法写入 ~/.dsh-tui/model.json”')
 }
-if (report.route.exists && report.route.family === 'codex' && installed?.version?.startsWith('0.5')) {
+if (report.route.exists && report.route.family === 'codex' && installed?.version !== undefined
+  && installed.version.localeCompare('0.6.0', undefined, { numeric: true }) < 0) {
   report.verdict.push('当前按 model.json 只显示 Codex；如果会话里其实在用别的模型，说明该文件没跟着更新——用 /model 重新选一次，或在 dsh-tui 里确认能写入 ~/.dsh-tui')
+}
+if (installed?.version !== undefined && installed.version.localeCompare('0.6.0', undefined, { numeric: true }) < 0) {
+  report.verdict.push('0.6.0 起才是“按窗口/会话”路由：旧版多开窗口会互相串，升级后再看')
 }
 
 if (json) {

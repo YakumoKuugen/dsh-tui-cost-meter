@@ -4,21 +4,27 @@
 
 # dsh-tui-cost-meter
 
-![Node](https://img.shields.io/badge/node-22.19%2B%20%7C%2024%2B-339933?logo=node.js&logoColor=white)
+![Node](https://img.shields.io/badge/node-22.19%2B-339933?logo=node.js&logoColor=white)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![dsh-tui](https://img.shields.io/badge/dsh--tui-0.16.x-5B4B8A)
-![status](https://img.shields.io/badge/status-0.5.1-brightgreen)
+![status](https://img.shields.io/badge/status-0.6.0-brightgreen)
 
-在 dsh-tui 的底栏状态区显示**当前会话模型**对应的计费模块：
+在 dsh-tui 的底栏状态区显示**这个窗口、这个会话正在用的模型**对应的计费模块：
 
 1. **Codex 剩余额度**：左边进度条，右边百分比；
 2. **DeepSeek 余额 / 今日费用 / 本月消费 / 峰谷倒计时**；
-3. **MiniMax Token Plan 剩余额度**：本周期 / 周额度进度条。
+3. **MiniMax Token Plan 剩余额度**：本周期 / 周额度进度条；
+4. **CommandCode 套餐额度**：5 小时 / 周窗口剩余 + 月度 Credits。
 
-插件会读取 `~/.dsh-tui/model.json` 里 dsh-tui 每次
-`/model` 切换后写入的当前 provider，**只渲染匹配的那个模块**——用 Codex 时不显示
-DeepSeek / MiniMax 行，用 MiniMax 时不显示 Codex / DeepSeek 行；当前路由读取不到时
-（例如文件还没生成）三个模块都照常显示，避免突然整块消失。
+路由取自宿主自己的 `session/event` 事件流——每次请求结束时的 `request/context`
+就带着 `{ provider, model }`，插件按“最近一次提交提示词的会话”选出当前窗口的模型，
+**只渲染匹配的那个模块**。所以：
+
+- 开两个 dsh-tui 窗口，一个用 Codex、一个用 CommandCode，两边各显示各的；
+- 同一个窗口里切换会话（不同模型）时，跟着你刚操作的会话走；
+- 子代理（subagent）的模型不会抢走状态行；
+- 事件流还没到达时（插件刚装、窗口还没发过请求），回退到 `~/.dsh-tui/model.json`，
+  再读不到就让全部模块显示，避免整块消失。
 
 设置面板集成在 `/settings` 里，可直接改窗口、进度条宽度、颜色阈值、费用项和刷新间隔，实时生效。
 
@@ -33,6 +39,10 @@ DeepSeek 平价 ━━┃────── 距峰时 1d19h
 
 ```text
 MiniMax 5h ███████░░░ 68% · 周 76%
+```
+
+```text
+CommandCode 5h ██████████ 100% · $10
 ```
 
 DeepSeek 第一行末尾是余额使用条：绿色剩余、橙色今日、暗色此前已用；第二行是峰谷进度条，
@@ -50,6 +60,9 @@ DeepSeek 第一行末尾是余额使用条：绿色剩余、橙色今日、暗�
 > **0.5.1**：路由文件路径改成和宿主完全一致（固定 `~/.dsh-tui/model.json`，不再读
 > `DSH_TUI_HOME`）；新增 `scripts/doctor.mjs` 诊断脚本；Node 要求放宽为 `>=22.19`，
 > schemastery 改为可选 peer，减少安装时的 peer 冲突提示。
+>
+> **0.6.0**：新增 CommandCode 额度行；路由改成按**窗口 / 会话**的实时事件流解析，
+> 多开窗口或同一窗口切换会话时各显示各自的模型。
 
 ## 快速开始
 
@@ -78,7 +91,7 @@ npm install
 npm test
 
 npm pack --pack-destination .
-dsh plugin --profile dsh-tui add "$PWD/dsh-tui-cost-meter-0.5.1.tgz"
+dsh plugin --profile dsh-tui add "$PWD/dsh-tui-cost-meter-0.6.0.tgz"
 ```
 
 然后重启 dsh-tui（或在会话里执行 `/restart`）。
@@ -106,7 +119,9 @@ dsh plugin --profile dsh-tui add "$PWD/dsh-tui-cost-meter-0.5.1.tgz"
 
 ## 功能
 
-- 只显示**当前会话模型**对应的计费模块（Codex / DeepSeek / MiniMax），路由未知时全部显示。
+- 只显示**这个窗口当前会话模型**对应的计费模块（Codex / DeepSeek / MiniMax / CommandCode）。
+- 多窗口 / 多会话各看各的：路由来自本进程的 `session/event`，不是全局的 `model.json`。
+- 路由未知（事件流未到、文件缺失）时全部显示，不会让状态区忽然空掉。
 - 进度条按 **剩余额度** 填充，右侧显示整数百分比。
 - 自动读取 Codex 服务端返回的滚动窗口（5 小时 / 每周 / 最短 / 最长）。
 - 剩余额度低于阈值时进度条变黄 / 变红。
@@ -123,6 +138,10 @@ dsh plugin --profile dsh-tui add "$PWD/dsh-tui-cost-meter-0.5.1.tgz"
   - `status === 3` 时识别为不限量，显示 `不限量`；
   - 进度条同样按剩余额度填充，低于阈值变黄 / 变红；
   - 国内站 `minimaxi.com` 失败时自动回退国际站 `minimax.io`。
+- CommandCode 行显示：
+  - 套餐 5 小时窗口的**剩余百分比**（`auto` 优先 5 小时，其次周窗口）；
+  - 行尾可显示月度 Credits 余额（`$10`）；
+  - 窗口用尽（`used >= cap`）时整条变红。
 - `/settings → 计费模块` 面板，**Codex** 分组：
   - 是否显示
   - 额度窗口（自动 / 5 小时 / 每周 / 最短 / 最长）
@@ -143,6 +162,13 @@ dsh plugin --profile dsh-tui add "$PWD/dsh-tui-cost-meter-0.5.1.tgz"
   - 进度条宽度（4–40 字符）
   - 变黄阈值、变红阈值
   - 刷新间隔（30–3600 秒）
+- **CommandCode 额度** 分组：
+  - 是否显示
+  - 额度窗口（自动 / 5 小时 / 每周）
+  - 进度条宽度（4–40 字符）
+  - 变黄阈值、变红阈值
+  - 是否显示月度 Credits
+  - 刷新间隔（30–3600 秒）
 - 未登录、登录过期、网络失败时显示暗色占位提示，不打断输入。
 - 富状态视图被宿主拒绝时自动退回纯文本状态行（同样是进度条 + 百分比）。
 
@@ -151,13 +177,15 @@ dsh plugin --profile dsh-tui add "$PWD/dsh-tui-cost-meter-0.5.1.tgz"
 ```text
 .
 ├── lib/                 # 插件运行时代码（不含 React / Ink 依赖）
-│   ├── active-model.js   # 读取 model.json，判断当前 provider 家族
+│   ├── active-model.js   # provider 家族分类 + 全局 model.json 回退
+│   ├── session-route.js  # 按窗口/会话解析当前模型（session/event）
 │   ├── config.js        # volatile 配置 schema
 │   ├── credentials.js   # Codex OAuth 只读发现
 │   ├── credential-file.js # 共享的凭据文档只读解析
 │   ├── deepseek*.js     # DeepSeek 余额 / 本月消费 / 峰谷
 │   ├── index.js         # Cordis apply：状态行、设置面板、轮询
 │   ├── minimax*.js      # MiniMax Token Plan 客户端 / store / 视图
+│   ├── commandcode*.js  # CommandCode 套餐额度客户端 / store / 视图
 │   ├── quota.js         # Codex 额度纯投影
 │   ├── settings.js      # /settings 字段声明
 │   ├── store.js         # Codex 额度轮询
@@ -190,7 +218,7 @@ dsh plugin --profile dsh-tui add "$PWD/dsh-tui-cost-meter-0.5.1.tgz"
 cd /path/to/dsh-tui-cost-meter
 npm pack --pack-destination .
 
-dsh plugin --profile dsh-tui add "$PWD/dsh-tui-cost-meter-0.5.1.tgz"
+dsh plugin --profile dsh-tui add "$PWD/dsh-tui-cost-meter-0.6.0.tgz"
 ```
 
 > 安装后请保留生成的 tarball：profile 的本地依赖指向它，删除后在该 profile 里重新
@@ -337,22 +365,67 @@ API Key 按以下顺序读取，任何一步失败都会继续尝试下一步：
 所以插件会先请求国内站、失败后再试国际站。没有任何 Key 时显示暗色占位 `MiniMax 未配置 API Key`，
 不会报错；把 MiniMax 行关掉或切到别的模型就不再显示。
 
+### CommandCode
+
+CommandCode 行读取套餐的用量窗口与月度 Credits：
+
+```text
+GET https://api.commandcode.ai/alpha/billing/credits
+```
+
+请求头 `Authorization: Bearer <key>`；响应形如
+
+```json
+{
+  "credits": { "monthlyCredits": 10, "purchasedCredits": 0, "freeCredits": 0 },
+  "windowLimits": {
+    "fiveHour": { "used": 0, "cap": 3, "resetAt": 0 },
+    "weekly":   { "used": 3, "cap": 6, "resetAt": 1792957120711 }
+  }
+}
+```
+
+窗口字段是**已用/上限**，插件换算成剩余百分比后展示（`used >= cap` 时整条变红）。
+月度 Credits 是钱包余额（1 credit ≈ $1 用量），可单独关闭显示。
+
+API Key 按以下顺序读取，任何一步失败都会继续尝试下一步：
+
+1. `COMMAND_API_KEY`（`command` provider 推理用的同一把 key），其次 `COMMANDCODE_API_KEY`；
+2. 先走 `ctx.credentials`，服务缺席时读 `$DSH_HOME/.credentials.yaml` 的 `refs` 段；
+3. 进程环境变量。
+
+没有 Key 时显示 `CommandCode 未配置 API Key` 占位，不会报错。
+
 ### 当前会话模型（只显示对应模块）
 
-dsh-tui 每次 `/model` 切换都会把当前路由写进 `~/.dsh-tui/model.json`
-（形如 `{"provider":"minimax-cn","model":"MiniMax-M3.1-Flash"}`）。这个路径写死在宿主的
-`utils/paths.js` 里，**不读任何环境变量**，插件也按同样的路径读；早期版本曾支持
-`DSH_TUI_HOME`，那会读到一份宿主根本不更新的旧文件，导致状态行永远停在旧模型上，0.5.1 起已移除。
-插件每 5 秒只读一次这个文件，据此决定显示哪个模块：
+**路由来源是宿主事件流，不是全局文件。** dsh-tui 在每次请求结束后向
+`session/event` 追加 `request/context`，其中带着该次请求实际解析出的
+`{ provider, model }`。插件订阅这个事件流，按会话记录最新路由，并选择“最近一次
+提交提示词的会话”作为当前窗口的模型：
+
+- 不同 dsh-tui 窗口是不同进程，各自只看到自己进程里的事件 → 各显示各的模型；
+- 同一窗口切换会话后，你在哪个会话里发消息，模块就跟到哪个会话；
+- 子代理（`delegationDepth > 0` 或 `origin === 'subagent'`）的事件被忽略；
+- 插件刚加载、事件还没到时，读取本进程的 live sessions 并取最近使用的那个
+  （`resume.txt` 优先，其次 `last-used.json`）；
+- 以上都拿不到时，才回退到 `~/.dsh-tui/model.json`（dsh-tui 每次 `/model` 写入的全局偏好）；
+- 仍然未知就让四个模块都显示，避免状态区突然空掉。
 
 | provider | 显示的模块 |
 | --- | --- |
 | `openai-codex` | Codex 额度 |
 | `deepseek` / `deepseek-official` / `deepseek-account`（含 `llm-` 前缀） | DeepSeek 费用 |
 | `minimax` / `minimax-cn` | MiniMax Token Plan |
-| 文件缺失 / 无法解析 | 三个模块都显示 |
+| `command` / `commandcode` | CommandCode 套餐 |
+| 无法识别 / 未就绪 | 四个模块都显示 |
 
-插件不会写这个文件，也不依赖宿主未公开的 API。
+插件只读这些状态，不会写回任何宿主文件，也不修改 `model.json`。
+
+### 关于 `model.json`
+
+`~/.dsh-tui/model.json` 是 dsh-tui 的**全局**偏好（最后一次 `/model` 选择），路径写死在宿主
+`utils/paths.js` 里、不读任何环境变量。0.5.1 之前插件用它决定显示哪个模块，多开窗口时后切换的
+窗口会把所有窗口一起带偏；0.6.0 起它只在事件流不可用时兜底。
 
 ### 登录过期 / 偶尔显示过期
 
@@ -387,14 +460,16 @@ UTC 窗口 `[1,4)`、`[6,10)`（北京时间 09:00–12:00、14:00–18:00），
   - `$DSH_HOME/.openai-codex-auth.json`：dsh-codex 凭据
   - `$CODEX_HOME/auth.json`：官方 Codex CLI 的 `tokens`
   - `$DSH_HOME/storages/cost-meter/ledger.json`：dsh-cost-meter 账本
-  - `$DSH_HOME/.credentials.yaml`：DeepSeek / MiniMax 开放平台 Key 与平台账号 grant
-  - `~/.dsh-tui/model.json`：当前会话 provider / model（只读，用于选择显示哪个模块）
+  - `$DSH_HOME/.credentials.yaml`：DeepSeek / MiniMax / CommandCode Key 与平台账号 grant
+  - `~/.dsh-tui/model.json`：全局模型偏好（仅在事件流不可用时作为回退）
+  - `~/.dsh-tui/resume.txt`、`last-used.json`：本进程 live session 的最近使用顺序（启动时选当前会话）
 - **访问的网络端点**
   - `https://chatgpt.com/backend-api/wham/usage`
   - `https://api.deepseek.com/user/balance`
   - `https://platform.deepseek.com/api/v0/usage/by_api_key/cost`
   - `https://www.minimaxi.com/v1/token_plan/remains`
   - `https://www.minimax.io/v1/token_plan/remains`
+  - `https://api.commandcode.ai/alpha/billing/credits`
 - **不会做的事**
   - 不写回 OAuth / API Key / 账本文件
   - 不在状态行、日志或错误信息里输出 token
@@ -405,10 +480,10 @@ UTC 窗口 `[1,4)`、`[6,10)`（北京时间 09:00–12:00、14:00–18:00），
 
 ## 兼容性与验证
 
-- 纯 ESM，无 native 依赖；Node `^22.19 || >=24`
+- 纯 ESM，无 native 依赖；Node `>=22.19`
 - 插件 peer：`@deepseek-ai/schemastery >=3.18.0`
 - 开发验证环境：dsh `0.2.1-rc.2`、dsh-tui `0.16.1`
-- 单元测试：`node --test test/*.test.js`，当前 122 个测试
+- 单元测试：`node --test test/*.test.js`，当前 147 个测试
 - 安装/显示自查：`npm run doctor`（或直接 `node scripts/doctor.mjs`）
 - 可选依赖：`dsh-codex`（Codex 额度服务）与 `dsh-cost-meter`（账本）
 - 未安装可选依赖时，插件仍可安装并显示对应占位/回退数据
@@ -420,11 +495,22 @@ UTC 窗口 `[1,4)`、`[6,10)`（北京时间 09:00–12:00、14:00–18:00），
 dsh-tui 没有把宿主 footer 的模型/目录行开放给插件；`ctx.tuiStatus` 是官方支持的底栏状态接缝，
 所以状态行渲染在输入框正上方。插件不会修改 dsh-tui 本身。
 
-**为什么只看到一行（或三行）？**
+**为什么只看到一行？**
 
-0.5.0 起按当前会话模型过滤：用 Codex 只显示 Codex 行，用 DeepSeek 只显示 DeepSeek 的两行，
-用 MiniMax 只显示 MiniMax 行。如果你在 `/model` 里切换后仍看到旧模块，等 5 秒（路由轮询间隔）
-或点一下状态行强制刷新。看不到 `~/.dsh-tui/model.json` 时会退回“全部显示”。
+插件只渲染当前窗口、当前会话所用模型的那一个模块：Codex 1 行、DeepSeek 2 行、
+MiniMax 1 行、CommandCode 1 行。路由来自本进程的 `session/event`，所以多开窗口时
+各窗口互不影响。若刚切换模型还没发消息，在目标会话里发一次（或按回车提交）即可让模块跟上；
+迟迟不切换说明事件流不可用，会退回 `model.json` 或“全部显示”。
+
+**两个窗口用不同模型，会互相干扰吗？**
+
+不会。路由按进程隔离：每个 dsh-tui 窗口只订阅自己进程里的 `session/event`，
+不再依赖全局的 `model.json`。
+
+**CommandCode 行显示的是什么？**
+
+套餐的 5 小时窗口剩余百分比（可在设置里改成周窗口），行尾的 `$10` 是月度 Credits 余额。
+接口给的是 `used`/`cap`，插件换算成剩余百分比；窗口用尽时整条变红。
 
 **MiniMax 行显示 68%，是用了 32% 吗？**
 
@@ -469,8 +555,12 @@ row id（默认 `dsh-tui-cost-meter`）。所有字段都是 volatile，改完�
 - 峰谷提示按账本里的窗口计算；如果手动改了 dsh-cost-meter 的峰谷配置，下一次刷新后生效。
 - MiniMax 行只展示 Token Plan 的剩余百分比；不做 token 计数、不读账本、不显示金额。
   国内站被拒时会回退国际站，但国际站要求国际站 Key，两者不通用。
-- 当前模型路由来自 `~/.dsh-tui/model.json`；如果宿主版本不再写这个文件，插件会退回
-  “三个模块都显示”，不会报错。
+- 路由优先来自宿主 `session/event`；事件流不可用时退回 `~/.dsh-tui/model.json`，
+  再不可用就“全部显示”，不会报错。宿主若改变了事件名或字段，只需要改 `lib/session-route.js`。
+- “当前会话”按最近一次提交提示词的会话判定：切换会话但还没发消息时，状态行可能短暂保留
+  上一个会话的模块，发出第一条消息后即修正。
+- CommandCode 只读 `alpha/billing/credits`；不读用量明细，也不做月度消费统计。
+- 子代理使用不同模型时不会切换模块（按设计忽略 `delegationDepth > 0` 的会话）。
 
 ## 开发
 
