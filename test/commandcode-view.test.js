@@ -49,7 +49,7 @@ test('renders the CommandCode quota row', () => {
   const view = createCommandCodeStatusView({ store, getConfig: () => CONFIG, onRefresh: () => {} })
   const tree = view({ React: fakeReact, ui: fakeUi })
   assert.equal(tree.type, 'Box')
-  assert.equal(flatten(tree), 'CommandCode 5h ██████████ 100% · $10')
+  assert.equal(flatten(tree), 'CommandCode 5h ██████████ 100% · 7d 50% · $10')
 })
 
 test('hides the row while another provider is in use', () => {

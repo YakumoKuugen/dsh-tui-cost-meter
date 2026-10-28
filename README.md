@@ -7,7 +7,7 @@
 ![Node](https://img.shields.io/badge/node-22.19%2B-339933?logo=node.js&logoColor=white)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![dsh-tui](https://img.shields.io/badge/dsh--tui-0.16.x-5B4B8A)
-![status](https://img.shields.io/badge/status-0.6.0-brightgreen)
+![status](https://img.shields.io/badge/status-0.6.1-brightgreen)
 
 在 dsh-tui 的底栏状态区显示**这个窗口、这个会话正在用的模型**对应的计费模块：
 
@@ -42,7 +42,7 @@ MiniMax 5h ███████░░░ 68% · 周 76%
 ```
 
 ```text
-CommandCode 5h ██████████ 100% · $10
+CommandCode 5h ██████████ 100% · 7d 100% · $10
 ```
 
 DeepSeek 第一行末尾是余额使用条：绿色剩余、橙色今日、暗色此前已用；第二行是峰谷进度条，
@@ -63,6 +63,9 @@ DeepSeek 第一行末尾是余额使用条：绿色剩余、橙色今日、暗�
 >
 > **0.6.0**：新增 CommandCode 额度行；路由改成按**窗口 / 会话**的实时事件流解析，
 > 多开窗口或同一窗口切换会话时各显示各自的模型。
+>
+> **0.6.1**：CommandCode 行补上 7 天窗口与「剩余/额度」Credits，按官方文档对齐
+> `/usage` 的两条窗口。
 
 ## 快速开始
 
@@ -91,7 +94,7 @@ npm install
 npm test
 
 npm pack --pack-destination .
-dsh plugin --profile dsh-tui add "$PWD/dsh-tui-cost-meter-0.6.0.tgz"
+dsh plugin --profile dsh-tui add "$PWD/dsh-tui-cost-meter-0.6.1.tgz"
 ```
 
 然后重启 dsh-tui（或在会话里执行 `/restart`）。
@@ -139,9 +142,10 @@ dsh plugin --profile dsh-tui add "$PWD/dsh-tui-cost-meter-0.6.0.tgz"
   - 进度条同样按剩余额度填充，低于阈值变黄 / 变红；
   - 国内站 `minimaxi.com` 失败时自动回退国际站 `minimax.io`。
 - CommandCode 行显示：
-  - 套餐 5 小时窗口的**剩余百分比**（`auto` 优先 5 小时，其次周窗口）；
-  - 行尾可显示月度 Credits 余额（`$10`）；
-  - 窗口用尽（`used >= cap`）时整条变红。
+  - 套餐 **5 小时窗口**的剩余百分比（进度条），后面跟 **7 天窗口**的剩余百分比；
+  - 行尾是月度 Credits：只有剩余时显示 `$10`，接口同时给出额度时显示 `$10/10`；
+  - 窗口用尽（`used >= cap`）时整条变红；
+  - 官方 CLI `/usage` 显示的是**已用**比例，本插件和其他额度行统一显示**剩余**比例。
 - `/settings → 计费模块` 面板，**Codex** 分组：
   - 是否显示
   - 额度窗口（自动 / 5 小时 / 每周 / 最短 / 最长）
@@ -218,7 +222,7 @@ dsh plugin --profile dsh-tui add "$PWD/dsh-tui-cost-meter-0.6.0.tgz"
 cd /path/to/dsh-tui-cost-meter
 npm pack --pack-destination .
 
-dsh plugin --profile dsh-tui add "$PWD/dsh-tui-cost-meter-0.6.0.tgz"
+dsh plugin --profile dsh-tui add "$PWD/dsh-tui-cost-meter-0.6.1.tgz"
 ```
 
 > 安装后请保留生成的 tarball：profile 的本地依赖指向它，删除后在该 profile 里重新
@@ -367,7 +371,9 @@ API Key 按以下顺序读取，任何一步失败都会继续尝试下一步：
 
 ### CommandCode
 
-CommandCode 行读取套餐的用量窗口与月度 Credits：
+CommandCode 行读取套餐的用量窗口与月度 Credits（官方文档
+[Pricing & Limits](https://commandcode.ai/docs/resources/pricing-limits) 说明套餐有
+「每月预算 + 滚动 5 小时/周窗口」，CLI 的 `/usage` 就展示这两条窗口）：
 
 ```text
 GET https://api.commandcode.ai/alpha/billing/credits
@@ -385,8 +391,16 @@ GET https://api.commandcode.ai/alpha/billing/credits
 }
 ```
 
-窗口字段是**已用/上限**，插件换算成剩余百分比后展示（`used >= cap` 时整条变红）。
-月度 Credits 是钱包余额（1 credit ≈ $1 用量），可单独关闭显示。
+窗口字段是**已用/上限**（`used`/`cap`，单位是美元额度），插件换算成剩余百分比后展示
+（`used >= cap` 时整条变红）。月度 Credits 是钱包余额（1 credit ≈ $1 用量），Go 套餐
+每月 $10（[定价页](https://commandcode.ai/pricing)），可单独关闭显示。
+
+文档还说明：两条窗口都从「第一次使用」开始滚动，不是固定时钟；月度预算按账单周期重置。
+接口没有给出的字段（例如 `resetAt` 为 0、没有 `monthlyCreditsGranted`）不会被猜成 0，
+而是直接省略。端点行为与 CodexBar 的
+[Command Code 适配](https://github.com/steipete/CodexBar/blob/main/docs/command-code.md)
+一致：`/alpha/billing/credits` 取窗口与 Credits，`/alpha/billing/subscriptions` 提供
+`planId` 与账单周期。
 
 API Key 按以下顺序读取，任何一步失败都会继续尝试下一步：
 

@@ -86,6 +86,20 @@ test('builds a ready row with the window, bar and credits', () => {
   assert.equal(selectCommandCodeWindow({ fiveHourPercent: 0, exceeded: true }, 'auto')?.exceeded, true)
 })
 
+test('shows the second window and the granted credits when the API reports them', () => {
+  const model = buildCommandCodeViewModel(
+    {
+      phase: 'ready',
+      quota: { fiveHourPercent: 68, weeklyPercent: 41, monthlyCredits: 4.5, monthlyCreditsGranted: 10 },
+    },
+    CONFIG,
+  )
+  assert.equal(model.otherLabel, '7d')
+  assert.equal(model.otherPercentText, '41%')
+  assert.equal(model.creditsText, '$4.50/$10')
+  assert.match(formatCommandCodeStatusText(model), /^CommandCode 5h [█░]+ 68% · 7d 41% · \$4\.50\/\$10$/u)
+})
+
 test('hides credits when the option is off and colors by remaining', () => {
   const model = buildCommandCodeViewModel(
     { phase: 'ready', quota: { fiveHourPercent: 4, weeklyPercent: 50, monthlyCredits: 10 } },
