@@ -168,11 +168,15 @@ if (modelPref === undefined) {
   }
 }
 
+// Inside a dsh tool shell the file sandbox answers EPERM for paths outside the
+// workspace, so a failure there is not evidence about the real permissions.
+const insideDshShell = typeof process.env.DSH_SESSION_ID === 'string' && process.env.DSH_SESSION_ID !== ''
 try {
   accessSync(tuiHome, constants.W_OK)
   report.route.dataDirWritable = true
-} catch {
-  report.route.dataDirWritable = false
+} catch (error) {
+  report.route.dataDirWritable = insideDshShell && error?.code !== 'ENOENT' ? undefined : false
+  if (report.route.dataDirWritable === undefined) report.route.dataDirWritableReason = 'inside-dsh'
 }
 
 /* ----------------------------------------------------------- credentials */
@@ -319,8 +323,8 @@ line('model', report.route.model)
 line('家族', report.route.family)
 line('model.json 年龄', report.route.ageHours === undefined ? undefined : `${report.route.ageHours} 小时`)
 line('数据目录可写', report.route.dataDirWritable === undefined
-  ? undefined
-  : (report.route.dataDirWritable ? '是' : '否（在 dsh 沙箱里跑会误报，请在普通终端重跑）'))
+  ? (report.route.dataDirWritableReason === 'inside-dsh' ? '未知（在 dsh 会话里运行，请在普通终端重跑）' : undefined)
+  : (report.route.dataDirWritable ? '是' : '否'))
 if (report.route.note !== undefined) process.stdout.write(`  → ${report.route.note}\n`)
 
 process.stdout.write('\n--- 安装日志\n')
