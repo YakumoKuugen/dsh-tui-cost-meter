@@ -7,7 +7,7 @@
 ![Node](https://img.shields.io/badge/node-22.19%2B-339933?logo=node.js&logoColor=white)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![dsh-tui](https://img.shields.io/badge/dsh--tui-0.16.x-5B4B8A)
-![status](https://img.shields.io/badge/status-0.6.1-brightgreen)
+![status](https://img.shields.io/badge/status-0.6.2-brightgreen)
 
 在 dsh-tui 的底栏状态区显示**这个窗口、这个会话正在用的模型**对应的计费模块：
 
@@ -66,6 +66,10 @@ DeepSeek 第一行末尾是余额使用条：绿色剩余、橙色今日、暗�
 >
 > **0.6.1**：CommandCode 行补上 7 天窗口与「剩余/额度」Credits，按官方文档对齐
 > `/usage` 的两条窗口。
+>
+> **0.6.2**：CommandCode 支持多把候选 Key 依次重试（`cmd login` 轮换密钥后不用重启），
+> 读取失败后 30 秒内自动重试，并把失败原因显示在行上（`额度不可用 · 密钥失效`）；
+> `doctor --probe` 可直接跑一次真实请求。
 
 ## 快速开始
 
@@ -94,7 +98,7 @@ npm install
 npm test
 
 npm pack --pack-destination .
-dsh plugin --profile dsh-tui add "$PWD/dsh-tui-cost-meter-0.6.1.tgz"
+dsh plugin --profile dsh-tui add "$PWD/dsh-tui-cost-meter-0.6.2.tgz"
 ```
 
 然后重启 dsh-tui（或在会话里执行 `/restart`）。
@@ -222,7 +226,7 @@ dsh plugin --profile dsh-tui add "$PWD/dsh-tui-cost-meter-0.6.1.tgz"
 cd /path/to/dsh-tui-cost-meter
 npm pack --pack-destination .
 
-dsh plugin --profile dsh-tui add "$PWD/dsh-tui-cost-meter-0.6.1.tgz"
+dsh plugin --profile dsh-tui add "$PWD/dsh-tui-cost-meter-0.6.2.tgz"
 ```
 
 > 安装后请保留生成的 tarball：profile 的本地依赖指向它，删除后在该 profile 里重新
@@ -402,13 +406,31 @@ GET https://api.commandcode.ai/alpha/billing/credits
 一致：`/alpha/billing/credits` 取窗口与 Credits，`/alpha/billing/subscriptions` 提供
 `planId` 与账单周期。
 
-API Key 按以下顺序读取，任何一步失败都会继续尝试下一步：
+API Key 会收集**所有**候选并依次尝试，任何一把被拒绝就换下一把：
 
-1. `COMMAND_API_KEY`（`command` provider 推理用的同一把 key），其次 `COMMANDCODE_API_KEY`；
-2. 先走 `ctx.credentials`，服务缺席时读 `$DSH_HOME/.credentials.yaml` 的 `refs` 段；
-3. 进程环境变量。
-
+1. 先 `COMMAND_API_KEY`、再 `COMMANDCODE_API_KEY`，各自走 `ctx.credentials`；
+2. 然后是环境变量；
+3. 最后是 `$DSH_HOME/.credentials.yaml` 的 `refs` 段（两把都读）。
 没有 Key 时显示 `CommandCode 未配置 API Key` 占位，不会报错。
+
+`cmd login` 会轮换密钥，而 TUI 进程里的凭据服务/环境变量可能还留着旧值——旧值会被接口拒绝（401）。
+插件因此会拿全部候选依次试一遍，并且失败后 30 秒重试一次，不需要重启 TUI。
+行上的失败提示会直接说明原因：
+
+| 行上显示 | 含义 |
+| --- | --- |
+| `额度不可用 · 密钥失效` | 所有候选 Key 都被拒绝（401/403），需要重新 `cmd login` 或更新 `refs` |
+| `额度不可用 · 接口错误` | 接口返回 5xx 等非鉴权错误 |
+| `额度不可用 · 网络不通` | 请求本身失败（DNS/代理/超时） |
+| `额度不可用 · 响应异常` | 响应不是预期 JSON |
+
+想自己确认一次，跑：
+
+```sh
+node "$HOME/.dsh/profiles/dsh-tui/node_modules/dsh-tui-cost-meter/scripts/doctor.mjs" --probe
+```
+
+它会列出候选 Key（只显示前缀）并对每一把真实请求一次，打印 `ok · 5h …% · 7d …% · $…` 或失败原因。
 
 ### 当前会话模型（只显示对应模块）
 

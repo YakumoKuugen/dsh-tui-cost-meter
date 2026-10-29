@@ -11,6 +11,7 @@ import {
   isCommandCodeProvider,
   parseCommandCodeCredits,
   resolveCommandCodeApiKey,
+  resolveCommandCodeApiKeys,
 } from '../lib/commandcode-client.js'
 import {
   buildCommandCodeViewModel,
@@ -163,6 +164,24 @@ test('resolves the key from the credential service, then the environment, then t
   }
 })
 
+test('lists every candidate key, most specific first, without duplicates', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'cost-meter-commandcode-multi-'))
+  try {
+    await writeFile(
+      join(dir, '.credentials.yaml'),
+      'refs:\n  COMMAND_API_KEY: user_file_a\n  COMMANDCODE_API_KEY: user_file_b\n',
+    )
+    const ctx = {
+      get: () => ({ resolve: async name => (name === 'COMMAND_API_KEY' ? { value: 'user_service' } : undefined) }),
+    }
+    const keys = await resolveCommandCodeApiKeys(ctx, { DSH_HOME: dir, COMMANDCODE_API_KEY: 'user_file_b' })
+    assert.deepEqual(keys.map(key => key.value), ['user_service', 'user_file_b', 'user_file_a'])
+    assert.equal(keys[0].source, 'COMMAND_API_KEY')
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
 test('queries the billing endpoint with a bearer key', async () => {
   let seen
   const result = await fetchCommandCodeQuota(
@@ -192,6 +211,8 @@ test('reports auth and HTTP failures without leaking the key', async () => {
     { fetchImpl: async () => ({ ok: false, status: 401, json: async () => ({}) }) },
   )
   assert.equal(unauthorized.status, 'error')
+  assert.equal(unauthorized.code, 'auth')
+  assert.equal(unauthorized.httpStatus, 401)
   assert.equal(unauthorized.message, 'CommandCode 登录已失效')
   assert.equal(unauthorized.message.includes('user_secret'), false)
 

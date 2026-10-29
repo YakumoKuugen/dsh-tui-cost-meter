@@ -19,9 +19,11 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { familyOfProvider } from '../lib/active-model.js'
+import { resolveCommandCodeApiKeys } from '../lib/commandcode-client.js'
 
 const argv = process.argv.slice(2)
 const json = argv.includes('--json')
+const probe = argv.includes('--probe')
 const profileFlag = argv.indexOf('--profile')
 const profile = profileFlag !== -1 && argv[profileFlag + 1] !== undefined
   ? argv[profileFlag + 1]
@@ -288,6 +290,34 @@ if (installed?.version !== undefined && installed.version.localeCompare('0.6.0',
   report.verdict.push('0.6.0 起才是“按窗口/会话”路由：旧版多开窗口会互相串，升级后再看')
 }
 
+/* ----------------------------------------------------------------- probe */
+
+if (probe) {
+  report.probe = {}
+  try {
+    const keys = await resolveCommandCodeApiKeys({ get: () => undefined })
+    report.probe.commandcodeKeys = keys.map(key => ({ source: key.source, length: key.value.length, prefix: mask(key.value) }))
+    const { fetchCommandCodeQuota } = await import('../lib/commandcode-client.js')
+    report.probe.commandcode = []
+    for (const key of keys) {
+      const result = await fetchCommandCodeQuota(key, {})
+      report.probe.commandcode.push({
+        source: key.source,
+        status: result.status,
+        code: result.code,
+        message: result.message,
+        fiveHourPercent: result.fiveHourPercent,
+        weeklyPercent: result.weeklyPercent,
+        monthlyCredits: result.monthlyCredits,
+      })
+      if (result.status === 'ok') break
+    }
+    if (keys.length === 0) report.probe.commandcode.push({ status: 'missing', message: 'no candidate key' })
+  } catch (error) {
+    report.probe.commandcode = [{ status: 'threw', message: error instanceof Error ? error.message : String(error) }]
+  }
+}
+
 if (json) {
   process.stdout.write(`${JSON.stringify(report, null, 2)}\n`)
   process.exit(0)
@@ -346,6 +376,19 @@ for (const [name, value] of Object.entries(report.credentials.inFile)) {
   if (value !== null) line(`${name} (file)`, value)
 }
 line('账本', `${report.credentials.ledger} ${report.credentials.ledgerExists ? '(存在)' : '(不存在)'}`)
+
+if (probe) {
+  process.stdout.write('\n--- CommandCode 实测\n')
+  for (const key of report.probe.commandcodeKeys ?? []) {
+    line(`候选 Key (${key.source})`, `${key.prefix} (${key.length} chars)`)
+  }
+  for (const attempt of report.probe.commandcode ?? []) {
+    const detail = attempt.status === 'ok'
+      ? `ok · 5h ${attempt.fiveHourPercent}% · 7d ${attempt.weeklyPercent}% · $${attempt.monthlyCredits}`
+      : `${attempt.status}${attempt.code === undefined ? '' : `/${attempt.code}`} · ${attempt.message ?? ''}`
+    line(`尝试 (${attempt.source ?? '—'})`, detail)
+  }
+}
 
 process.stdout.write('\n--- 结论\n')
 if (report.verdict.length === 0) {

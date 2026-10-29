@@ -20,10 +20,13 @@ function createPoller(overrides = {}) {
   const poller = new CommandCodePoller({
     store,
     getConfig: () => config,
-    resolveApiKey: async () => (overrides.noKey ? undefined : { value: 'user_test' }),
-    fetchQuota: async () => {
+    resolveApiKeys: async () => (overrides.noKey
+      ? []
+      : (overrides.keys ?? [{ value: 'user_test', source: 'COMMAND_API_KEY' }])),
+    fetchQuota: async (credential) => {
       calls += 1
       if (overrides.noKey) return { status: 'missing' }
+      if (overrides.perKey?.[credential.value] !== undefined) return overrides.perKey[credential.value]
       return overrides.result ?? {
         status: 'ok',
         fiveHourPercent: 100,
@@ -86,6 +89,51 @@ test('does not query while the line is disabled', async () => {
   assert.equal(calls(), 0)
   assert.equal(store.getSnapshot().phase, 'disabled')
   assert.equal(store.getSnapshot().reason, 'feature-off')
+})
+
+test('falls back to the next key when one is rejected', async () => {
+  const { poller, store, startAndWait } = createPoller({
+    keys: [
+      { value: 'stale', source: 'COMMAND_API_KEY' },
+      { value: 'fresh', source: 'COMMANDCODE_API_KEY' },
+    ],
+    perKey: {
+      stale: { status: 'error', code: 'auth', message: 'CommandCode 登录已失效' },
+    },
+  })
+  await startAndWait()
+  poller.stop()
+  const state = store.getSnapshot()
+  assert.equal(state.phase, 'ready')
+  assert.equal(state.keySource, 'COMMANDCODE_API_KEY')
+  assert.equal(state.quota.monthlyCredits, 10)
+})
+
+test('does not burn through keys on a network failure', async () => {
+  let attempts = 0
+  const { poller, store, startAndWait } = createPoller({
+    keys: [
+      { value: 'a', source: 'COMMAND_API_KEY' },
+      { value: 'b', source: 'COMMANDCODE_API_KEY' },
+    ],
+  })
+  poller.fetchQuota = async () => {
+    attempts += 1
+    return { status: 'error', code: 'network', message: 'boom' }
+  }
+  await startAndWait()
+  poller.stop()
+  assert.equal(attempts, 1)
+  assert.equal(store.getSnapshot().phase, 'error')
+  assert.equal(store.getSnapshot().errorCode, 'network')
+})
+
+test('parks at missing-key when no candidate is configured', async () => {
+  const { poller, store, startAndWait } = createPoller({ noKey: true })
+  await startAndWait()
+  poller.stop()
+  assert.equal(store.getSnapshot().phase, 'disabled')
+  assert.equal(store.getSnapshot().reason, 'missing-key')
 })
 
 test('throttles repeated manual refreshes', async () => {
