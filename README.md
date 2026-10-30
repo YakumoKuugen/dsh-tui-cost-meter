@@ -1,7 +1,3 @@
-<p align="center">
-  <a href="https://github.com/ccch1mneyyy/dsh-TUI">dsh-TUI</a> · 一个为 dsh-TUI 生态打造的插件
-</p>
-
 # dsh-tui-cost-meter
 
 ![Node](https://img.shields.io/badge/node-22.19%2B-339933?logo=node.js&logoColor=white)
