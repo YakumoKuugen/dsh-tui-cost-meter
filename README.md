@@ -5,7 +5,7 @@
 ![dsh-tui](https://img.shields.io/badge/dsh--tui-0.16.x-5B4B8A)
 ![status](https://img.shields.io/badge/status-0.6.2-brightgreen)
 
-> 适用于 [dsh-TUI](https://github.com/ccch1mneyyy/dsh-TUI)（[官网](https://dshtui.com)）的社区插件。
+> 适用于 [dsh-TUI](https://github.com/ccch1mneyyy/dsh-TUI) 的社区插件。
 
 在 dsh-tui 的底栏状态区显示**这个窗口、这个会话正在用的模型**对应的计费模块：
 
