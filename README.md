@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/dsh-tui-logo.svg" alt="dsh-TUI" width="420">
+  <a href="https://github.com/ccch1mneyyy/dsh-TUI">dsh-TUI</a> · 一个为 dsh-TUI 生态打造的插件
 </p>
 
 # dsh-tui-cost-meter
@@ -201,7 +201,6 @@ dsh plugin --profile dsh-tui add "$PWD/dsh-tui-cost-meter-0.6.2.tgz"
 │   └── view.js          # Codex 状态行视图
 ├── scripts/doctor.mjs    # 只读诊断：版本 / 路由 / 凭据 / 安装日志
 ├── test/                # node:test 单元测试
-├── assets/              # dsh-TUI logo 与来源说明
 ├── cordis.patch.yml     # profile bundle 插入行
 ├── package.json
 ├── README.md
